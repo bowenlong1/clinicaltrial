@@ -1,39 +1,33 @@
-proc sql;
-create table custmr_nbr_details as
-
-select distinct A.PARTIAL_ACCT_NBR, c.actual_collect_unit_id,
-
-d.CUSTMR_NBR, e.CUSTMR_NBR as CO_CUSTMR_NBR, d.FIRST_NM, d.LAST_NM
-
+# First Query
+spark.sql("""
+CREATE OR REPLACE TEMPORARY VIEW custmr_nbr_details AS
+SELECT DISTINCT A.PARTIAL_ACCT_NBR, 
+                C.actual_collect_unit_id,
+                D.CUSTMR_NBR, 
+                E.CUSTMR_NBR AS CO_CUSTMR_NBR, 
+                D.FIRST_NM, 
+                D.LAST_NM
 FROM SVCNG.ACCT_STATUS_FACT A
+JOIN SVCNG.DAY_DIM B
+  ON A.DAY_KEY = B.DAY_KEY
+  AND B.day_key = 'day_key_after_value' -- replace 'day_key_after_value' with the actual value or a variable
+JOIN SVCNG.ACCT_DIM C
+  ON A.ACCT_KEY = C.ACCT_KEY
+  AND C.PORTFLO_TYPE_CD IN ('RS','RD')
+LEFT JOIN SVCNG.CUSTMR_DIM D
+  ON A.BORR_CUSTMR_KEY = D.CUSTMR_KEY
+LEFT JOIN SVCNG.CUSTMR_DIM E
+  ON A.C_CUSTMR_KEY = E.CUSTMR_KEY
+""")
 
-            JOIN SVCNG.DAY_DIM B
-
-                ON A.DAY_KEY = B.DAY_KEY
-
-                    AND b.day_key = &day_key_after.
-
-            JOIN SVCNG.ACCT_DIM C
-
-                ON A.ACCT_KEY = C.ACCT_KEY
-
-                    AND C.PORTFLO_TYPE_CD in ('RS','RD')
-
-            left join SVCNG.CUSTMR_DIM d
-
-                on a.BORR_CUSTMR_KEY = d.CUSTMR_KEY
-
-            left join SVCNG.CUSTMR_DIM e
-
-                on a.C_CUSTMR_KEY = e.CUSTMR_KEY;
-quit;
-
-proc sql;
-create table custmr_nbr as select partial_acct_nbr, CUSTMR_NBR
-from custmr_nbr_details
-where CUSTMR_NBR not in ("", "UNKNOWN")
-union
-select partial_acct_nbr, CO_CUSTMR_NBR as CUSTMR_NBR
-from custmr_nbr_details
-where CO_CUSTMR_NBR not in ("", "UNKNOWN");
-quit;
+# Second Query
+spark.sql("""
+CREATE OR REPLACE TEMPORARY VIEW custmr_nbr AS
+SELECT partial_acct_nbr, CUSTMR_NBR 
+FROM custmr_nbr_details 
+WHERE CUSTMR_NBR NOT IN ("", "UNKNOWN")
+UNION
+SELECT partial_acct_nbr, CO_CUSTMR_NBR AS CUSTMR_NBR 
+FROM custmr_nbr_details 
+WHERE CO_CUSTMR_NBR NOT IN ("", "UNKNOWN")
+""")
