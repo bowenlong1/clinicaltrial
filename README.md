@@ -3,6 +3,13 @@ acct = spark.sql("""
   FROM pop
 """)
 
+spark.sql("""
+CREATE OR REPLACE TEMPORARY VIEW acct AS
+SELECT DISTINCT CAST(SUBSTRING(account_number, LENGTH(account_number) - 11, 12) AS BIGINT) AS loan_acct_nbr
+FROM pop
+""")
+
+
 # Assume you have read the data from Oracle into oracle_df
 oracle_df.createOrReplaceTempView("oracle_data")
 
