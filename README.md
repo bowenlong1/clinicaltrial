@@ -1,10 +1,8 @@
 dbfs_path = "abfss://datascience@gmfcusproddpmlandingsa.dfs.core.windows.net/MLOps_46-60/digital"
 
-# List all files in the DBFS file location
 file_list = dbutils.fs.ls(dbfs_path)
 
-# Get all files matching date range
-# filtered_files = []
+
 qual_file_list = []
 for file in file_list:
     filedate = file.name[9:17]
@@ -17,9 +15,6 @@ for file in file_list:
     except ValueError:
         pass
     
-# Print the list of filtered files
-# for file in filtered_files:
-#     print(file.path + "/" + file.name)
 if qual_file_list:
     hist_tgt = spark.read.option("header","true").csv(qual_file_list).toPandas()
 else:
