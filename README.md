@@ -19,3 +19,5 @@ if qual_file_list:
     hist_tgt = spark.read.option("header","true").csv(qual_file_list).toPandas()
 else:
     hist_tgt = pd.DataFrame({'account_number':[]})
+
+Campaign_model_Strategy_46_60_email_push_20230901.txt
