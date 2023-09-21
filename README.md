@@ -1,41 +1,36 @@
 from pyspark.sql import Row
-from pyspark.sql.functions import lit, concat_ws
+from pyspark.sql.functions import concat_ws
 
 def write_dataframe_to_dat(dataframe, target_directory, dat_filename):
     # Convert all columns to string
     for column in dataframe.columns:
         dataframe = dataframe.withColumn(column, dataframe[column].cast("string"))
-    
+
     # Prepare the concatenated DataFrame
     concatenated_df = dataframe.withColumn("single_column", concat_ws("|", *dataframe.columns)).select("single_column")
 
     # Create header row
     headers = "|".join(dataframe.columns)
     headers_df = spark.createDataFrame([Row(single_column=headers)])
-
-    # Add a row_order column to headers_df and concatenated_df for sorting
-    headers_df = headers_df.withColumn("row_order", lit(0))
-    concatenated_df = concatenated_df.withColumn("row_order", lit(1))
-
-    # Union the header and data and sort by row_order
-    final_df = headers_df.union(concatenated_df).orderBy("row_order").drop("row_order")
-
-    # Source and destination directory paths
-    src_directory = target_directory + "/tmp_" + dat_filename
-    dest_directory = target_directory + "/"
     
-    # Write the DataFrame to a temporary DAT file
-    final_df.coalesce(1).write.text(src_directory)
+    # Union the header and data
+    final_df = headers_df.union(concatenated_df)
 
-    # Move the generated file to the desired directory and rename it to the specified name
-    src_files = dbutils.fs.ls(src_directory)
+    # Specify the final path for the dat file
+    dat_path = f"{target_directory}/{dat_filename}"
+    
+    # Write the DataFrame to the DAT file
+    final_df.coalesce(1).write.mode('overwrite').text(dat_path)
 
-    for src_file in src_files:
-        if src_file.name.endswith(".dat"):  # Check for .dat files
-            src_file_path = src_file.path
-            dest_file_path = f"{dest_directory}/{dat_filename}"
-            dbutils.fs.cp(src_file_path, dest_file_path)
-            break  # break after copying the file
+    # Rename the part file to .dat extension
+    part_files = dbutils.fs.ls(dat_path)
 
-    # Remove the temporary directory
-    dbutils.fs.rm(src_directory, True)
+    for part_file in part_files:
+        if 'part-' in part_file.name:
+            dbutils.fs.mv(part_file.path, f"{dat_path}/{dat_filename}")
+
+    return f"File saved to: {dat_path}/{dat_filename}"
+
+# Example Usage:
+# result = write_dataframe_to_dat(your_dataframe, "/your/target/directory", "output.dat")
+# print(result)
