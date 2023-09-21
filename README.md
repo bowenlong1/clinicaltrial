@@ -1,7 +1,7 @@
 from pyspark.sql import Row
 from pyspark.sql.functions import lit, concat_ws
 
-def write_dataframe_to_dat(dataframe, target_directory, csv_filename):
+def write_dataframe_to_dat(dataframe, target_directory, dat_filename):
     # Convert all columns to string
     for column in dataframe.columns:
         dataframe = dataframe.withColumn(column, dataframe[column].cast("string"))
@@ -21,20 +21,19 @@ def write_dataframe_to_dat(dataframe, target_directory, csv_filename):
     final_df = headers_df.union(concatenated_df).orderBy("row_order").drop("row_order")
 
     # Source and destination directory paths
-    src_directory = target_directory + "/tmp_" + csv_filename
+    src_directory = target_directory + "/tmp_" + dat_filename
     dest_directory = target_directory + "/"
-    new_dat_name = csv_filename.replace(".txt", ".dat") if csv_filename.endswith(".txt") else csv_filename + ".dat"
-
-    # Write the DataFrame to the DAT file
+    
+    # Write the DataFrame to a temporary DAT file
     final_df.coalesce(1).write.text(src_directory)
 
-    # Move the generated file to the desired directory and rename it
+    # Move the generated file to the desired directory and rename it to the specified name
     src_files = dbutils.fs.ls(src_directory)
 
     for src_file in src_files:
         if src_file.name.endswith(".dat"):  # Check for .dat files
             src_file_path = src_file.path
-            dest_file_path = f"{dest_directory}/{new_dat_name}"
+            dest_file_path = f"{dest_directory}/{dat_filename}"
             dbutils.fs.cp(src_file_path, dest_file_path)
             break  # break after copying the file
 
