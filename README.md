@@ -1,5 +1,5 @@
 from pyspark.sql import Row
-from pyspark.sql.functions import concat_ws
+from pyspark.sql.functions import concat_ws, lit
 
 def write_dataframe_to_txt(dataframe, target_directory, csv_filename):
     # Convert all columns to string
@@ -13,8 +13,12 @@ def write_dataframe_to_txt(dataframe, target_directory, csv_filename):
     headers = "|".join(dataframe.columns)
     headers_df = spark.createDataFrame([Row(single_column=headers)])
     
-    # Union the header and data
-    final_df = headers_df.union(concatenated_df)
+    # Add a row_order column to headers_df and concatenated_df for sorting
+    headers_df = headers_df.withColumn("row_order", lit(0))
+    concatenated_df = concatenated_df.withColumn("row_order", lit(1))
+    
+    # Union the header and data and sort by row_order
+    final_df = headers_df.union(concatenated_df).orderBy("row_order").drop("row_order")
     
     # Source and destination directory paths
     src_directory = target_directory + "/tmp_" + csv_filename
